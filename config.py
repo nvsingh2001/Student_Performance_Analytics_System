@@ -1,0 +1,5 @@
+BUCKET_NAME = "student-performance-datasets"
+TABLE_NAME = "student_performance"
+LAMBDA_NAME = "student-performance-processor"
+GSI_NAME = "grade-score-index"
+AWS_REGION = "ap-south-1"
