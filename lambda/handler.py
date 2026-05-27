@@ -5,7 +5,7 @@ from utils import calculate_performance_category, validate_record
 from decimal import Decimal
 
 s3 = boto3.client("s3")
-dynamodb = boto3.client("dynamodb")
+dynamodb = boto3.resource("dynamodb")
 TABLE_NAME = os.environ["TABLE_NAME"]
 
 
@@ -22,7 +22,7 @@ def convert_floats(obj):
 
 def insert_into_dynamodb(table, records):
     for record in records:
-        table.put_Item(Item=record)
+        table.put_item(Item=record)
         print(f"Inserted: {record['student_id']}")
 
 
@@ -59,7 +59,7 @@ def lambda_handler(event, context):
         try:
             validate_record(student)
             student["performance_category"] = calculate_performance_category(
-                student["performance_category"]
+                float(student["total_score"])
             )
 
             student = convert_floats(student)

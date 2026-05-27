@@ -2,21 +2,38 @@ import boto3
 import json
 import time
 import zipfile
+from config import BUCKET_NAME, LAMBDA_NAME, ROLE_NAME, TABLE_NAME, AWS_REGION
 
 
 class AWSProvisioning:
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(AWSProvisioning, cls).__new__(cls)
+        return cls._instance
+
     def __init__(self, region):
-        self._region = region
+        if not hasattr(self, "_initialized"):
+            self._initialized = True
+            self._dynamodb = boto3.resource("dynamodb", region_name=region)
+            self._iam = boto3.client("iam", region_name=region)
+            self._s3 = boto3.client("s3", region_name=region)
+            self._lambda = boto3.client("lambda", region_name=region)
+            self._region = region
+            self._s3_bucket = None
 
-        self._dynamodb = boto3.client("dynamodb", region_name=region)
+    def get_table(self):
+        return self.table
 
-        self.table = None
+    def get_s3(self):
+        return self._s3
 
-        self._s3 = boto3.client("s3", region_name=region)
+    def get_lambda(self):
+        return self._lambda
 
-        self._iam = boto3.client("iam", region_name=region)
-
-        self._lambda = boto3.client("lambda", region_name=region)
+    def get_iam(self):
+        return self._iam
 
     def create_table(self, table_name, key_schema, attribute_definitions, billing_mode):
         """
@@ -47,11 +64,9 @@ class AWSProvisioning:
 
             print("Table Status:", self.table.table_status)
 
-        except self._dynamodb.exceptions.ResourceInUseException:
+        except self._dynamodb.meta.client.exceptions.ResourceInUseException:
             print("Table already exists.")
-
-    def get_table(self):
-        return self.table
+            self.table = self._dynamodb.Table(table_name)
 
     def create_lambda_role(self, role_name):
         print("Creating IAM role for lambda...")
@@ -183,3 +198,21 @@ class AWSProvisioning:
             },
         )
         print(" S3 trigger attached - uploads to bucket will trigger Lambda")
+
+
+def provision_services():
+    aws = AWSProvisioning(AWS_REGION)
+    KeySchema = [{"AttributeName": "student_id", "KeyType": "HASH"}]
+    AttributeDefinitions = [{"AttributeName": "student_id", "AttributeType": "S"}]
+    BillingMode = "PAY_PER_REQUEST"
+
+    aws.create_table(TABLE_NAME, KeySchema, AttributeDefinitions, BillingMode)
+    role_arn = aws.create_lambda_role(ROLE_NAME)
+    aws.create_s3_bucket(BUCKET_NAME)
+    zip_path = aws.zip_lambda()
+    lambda_arn = aws.deploy_lambda(role_arn, zip_path, LAMBDA_NAME, TABLE_NAME)
+    aws.attach_s3_trigger(BUCKET_NAME, LAMBDA_NAME, lambda_arn)
+
+    print("Provisioning complete.")
+
+    return aws

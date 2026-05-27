@@ -1,22 +1,24 @@
-from setup import AWSProvisioning
-from config import BUCKET_NAME, LAMBDA_NAME, ROLE_NAME, TABLE_NAME, AWS_REGION
+from config import BUCKET_NAME
+from setup import provision_services
+from services import S3Manager
+from utils import to_json
 
 
 def main():
-    aws = AWSProvisioning(AWS_REGION)
+    aws = provision_services()
 
-    # Creating student_performance DynamoDB table
-    TableName = TABLE_NAME
-    KeySchema = [{"AttributeName": "student_id", "KeyType": "HASH"}]
-    AttributeDefinitions = [{"AttributeName": "student_id", "AttributeType": "S"}]
-    BillingMode = "PAY_PER_REQUEST"
+    # Upload files s3 bucket
+    s3 = S3Manager(aws.get_s3(), BUCKET_NAME)
 
-    aws.create_table(TableName, KeySchema, AttributeDefinitions, BillingMode)
-    role_arn = aws.create_lambda_role(ROLE_NAME)
-    aws.create_s3_bucket(BUCKET_NAME)
-    zip_path = aws.zip_lambda()
-    lambda_arn = aws.deploy_lambda(role_arn, zip_path, LAMBDA_NAME, TableName)
-    aws.attach_s3_trigger(BUCKET_NAME, LAMBDA_NAME, lambda_arn)
+    file_path = input("Enter the path of the file to upload: ")
+    if file_path.endswith(".json"):
+        s3.upload_file(file_path)
+    elif file_path.endswith(".csv"):
+        json_file_path = file_path.replace(".csv", ".json")
+        to_json(file_path, json_file_path)
+        s3.upload_file(json_file_path)
+    else:
+        print("Invalid file format. Please upload a .json or .csv file.")
 
 
 if __name__ == "__main__":
