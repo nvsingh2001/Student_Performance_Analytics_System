@@ -1,11 +1,12 @@
 import boto3
 import json
+import os
 from utils import calculate_performance_category, validate_record
 from decimal import Decimal
 
 s3 = boto3.client("s3")
 dynamodb = boto3.client("dynamodb")
-TABLE_NAME = "student_performance"
+TABLE_NAME = os.environ["TABLE_NAME"]
 
 
 def convert_floats(obj):
