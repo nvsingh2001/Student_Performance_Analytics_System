@@ -1,5 +1,5 @@
 from config import BUCKET_NAME
-from setup import provision_services
+from infra.provision import provision_services
 from services import S3Manager
 from utils import to_json
 
