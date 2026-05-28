@@ -1,3 +1,11 @@
+import os
+import subprocess
+
+
+def clear():
+    subprocess.call("cls" if os.name == "nt" else "clear")
+
+
 def print_student_table(items, title="Student Performance Records"):
     """
     Helper function to print a formatted table of student records.

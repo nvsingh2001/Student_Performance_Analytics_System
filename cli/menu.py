@@ -1,5 +1,6 @@
 from typing import List
 from cli.base import Command
+from utils import clear
 
 
 class MenuController:
@@ -38,3 +39,4 @@ class MenuController:
 
             print("\nPress Enter to return to menu...")
             input()
+            clear()

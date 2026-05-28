@@ -10,7 +10,9 @@ class InfrastructureProvisioner:
         self.factory = factory
         self.table = None
 
-    def create_table(self, table_name, key_schema, attribute_definitions, billing_mode, gsi=None):
+    def create_table(
+        self, table_name, key_schema, attribute_definitions, billing_mode, gsi=None
+    ):
         db_resource = self.factory.get_dynamodb_resource()
         try:
             kwargs = {
@@ -30,28 +32,39 @@ class InfrastructureProvisioner:
         except db_resource.meta.client.exceptions.ResourceInUseException:
             print("Table already exists.")
             self.table = db_resource.Table(table_name)
-            
-            # Logic to dynamically add GSI if it doesn't exist
+
             if gsi:
-                has_gsi = any(index['IndexName'] == gsi[0]['IndexName'] for index in self.table.global_secondary_indexes or [])
+                has_gsi = any(
+                    index["IndexName"] == gsi[0]["IndexName"]
+                    for index in self.table.global_secondary_indexes or []
+                )
                 if not has_gsi:
-                    print(f"Adding GSI {gsi[0]['IndexName']} to existing table. This may take a few minutes...")
+                    print(
+                        f"Adding GSI {gsi[0]['IndexName']} to existing table. This may take a few minutes..."
+                    )
                     self.table.update(
                         AttributeDefinitions=attribute_definitions,
                         GlobalSecondaryIndexUpdates=[
                             {
-                                'Create': {
-                                    'IndexName': gsi[0]['IndexName'],
-                                    'KeySchema': gsi[0]['KeySchema'],
-                                    'Projection': gsi[0]['Projection']
+                                "Create": {
+                                    "IndexName": gsi[0]["IndexName"],
+                                    "KeySchema": gsi[0]["KeySchema"],
+                                    "Projection": gsi[0]["Projection"],
                                 }
                             }
-                        ]
+                        ],
                     )
                     while True:
                         self.table.reload()
-                        idx_status = next((idx['IndexStatus'] for idx in self.table.global_secondary_indexes or [] if idx['IndexName'] == gsi[0]['IndexName']), None)
-                        if idx_status == 'ACTIVE':
+                        idx_status = next(
+                            (
+                                idx["IndexStatus"]
+                                for idx in self.table.global_secondary_indexes or []
+                                if idx["IndexName"] == gsi[0]["IndexName"]
+                            ),
+                            None,
+                        )
+                        if idx_status == "ACTIVE":
                             break
                         print(f"  Waiting for GSI... current status: {idx_status}")
                         time.sleep(5)
@@ -183,23 +196,26 @@ class InfrastructureProvisioner:
 
 def provision_services(factory: AWSClientFactory):
     from config import GSI_NAME
+
     provisioner = InfrastructureProvisioner(factory)
 
     KeySchema = [{"AttributeName": "student_id", "KeyType": "HASH"}]
     AttributeDefinitions = [
         {"AttributeName": "student_id", "AttributeType": "S"},
         {"AttributeName": "grade", "AttributeType": "S"},
-        {"AttributeName": "total_score", "AttributeType": "N"}
+        {"AttributeName": "total_score", "AttributeType": "N"},
     ]
-    
-    gsi = [{
-        "IndexName": GSI_NAME,
-        "KeySchema": [
-            {"AttributeName": "grade", "KeyType": "HASH"},
-            {"AttributeName": "total_score", "KeyType": "RANGE"}
-        ],
-        "Projection": {"ProjectionType": "ALL"}
-    }]
+
+    gsi = [
+        {
+            "IndexName": GSI_NAME,
+            "KeySchema": [
+                {"AttributeName": "grade", "KeyType": "HASH"},
+                {"AttributeName": "total_score", "KeyType": "RANGE"},
+            ],
+            "Projection": {"ProjectionType": "ALL"},
+        }
+    ]
 
     provisioner.create_table(
         TABLE_NAME, KeySchema, AttributeDefinitions, "PAY_PER_REQUEST", gsi
