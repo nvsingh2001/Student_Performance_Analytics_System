@@ -79,17 +79,18 @@ class StatusCommand(Command):
                 return
 
             print("\n--- Student Performance Records ---")
-            print(f"{'Student ID':<15} | {'Score':<6} | {'Grade':<5} | {'Attnd%':<7} | {'Hours':<6} | {'Category':<12}")
-            print("-" * 75)
+            print(f"{'Student ID':<15} | {'Study Hours':<12} | {'Attendance %':<12} | {'Participation':<13} | {'Total Score':<11} | {'Grade':<5} | {'Category':<15}")
+            print("-" * 100)
             for item in items:
                 sid = item.get("student_id", "N/A")
+                hours = str(item.get("weekly_self_study_hours", "N/A"))
+                attnd = str(item.get("attendance_percentage", "N/A"))
+                part = str(item.get("class_participation", "N/A"))
                 score = str(item.get("total_score", "N/A"))
                 grade = item.get("grade", "N/A")
-                attnd = str(item.get("attendance_percentage", "N/A"))
-                hours = str(item.get("weekly_self_study_hours", "N/A"))
                 cat = item.get("performance_category", "N/A")
-                print(f"{sid:<15} | {score:<6} | {grade:<5} | {attnd:<7} | {hours:<6} | {cat:<12}")
-            print("-" * 75)
+                print(f"{sid:<15} | {hours:<12} | {attnd:<12} | {part:<13} | {score:<11} | {grade:<5} | {cat:<15}")
+            print("-" * 100)
 
         except Exception as e:
             print(f"[Error] Failed to fetch records: {e}")
@@ -270,3 +271,67 @@ class DeleteCommand(Command):
             print(f"[Success] Record for {student_id} deleted.")
         except Exception as e:
             print(f"[Error] Deletion failed: {e}")
+
+
+class FilterQueryCommand(Command):
+    @property
+    def name(self) -> str:
+        return "Conditional Queries"
+
+    def __init__(self, db_manager: DynamoDBManager):
+        self.db = db_manager
+
+    def execute(self) -> None:
+        print("\n--- Select a Query ---")
+        print("1. Attendance Percentage > 90")
+        print("2. Weekly Self Study Hours > 10")
+        print("3. Performance Category: Excellent")
+        print("4. Back to Main Menu")
+
+        choice = input("Select query option: ").strip()
+
+        if choice == "1":
+            expr = "attendance_percentage > :val"
+            vals = {":val": Decimal("90")}
+            title = "Students with Attendance > 90%"
+        elif choice == "2":
+            expr = "weekly_self_study_hours > :val"
+            vals = {":val": Decimal("10")}
+            title = "Students with Study Hours > 10"
+        elif choice == "3":
+            expr = "performance_category = :val"
+            vals = {":val": "Excellent"}
+            title = "Excellent Performance Students"
+        elif choice == "4":
+            return
+        else:
+            print("[Error] Invalid selection.")
+            return
+
+        print(f"[Querying] Fetching {title}...")
+        try:
+            response = self.db.filter_records(expr, vals)
+            items = response.get("Items", [])
+
+            if not items:
+                print("[Info] No records found matching the criteria.")
+                return
+
+            print(f"\n--- {title} ---")
+            print(f"{'Student ID':<15} | {'Study Hours':<12} | {'Attendance %':<12} | {'Participation':<13} | {'Total Score':<11} | {'Grade':<5} | {'Category':<15}")
+            print("-" * 100)
+            for item in items:
+                sid = item.get("student_id", "N/A")
+                hours = str(item.get("weekly_self_study_hours", "N/A"))
+                attnd = str(item.get("attendance_percentage", "N/A"))
+                part = str(item.get("class_participation", "N/A"))
+                score = str(item.get("total_score", "N/A"))
+                grade = item.get("grade", "N/A")
+                cat = item.get("performance_category", "N/A")
+                print(f"{sid:<15} | {hours:<12} | {attnd:<12} | {part:<13} | {score:<11} | {grade:<5} | {cat:<15}")
+            print("-" * 100)
+            print(f"Total found: {len(items)}")
+
+
+        except Exception as e:
+            print(f"[Error] Filter query failed: {e}")

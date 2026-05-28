@@ -9,6 +9,22 @@ dynamodb = boto3.resource("dynamodb")
 TABLE_NAME = os.environ["TABLE_NAME"]
 
 
+def convert_numeric_fields(student):
+    numeric_fields = [
+        "weekly_self_study_hours",
+        "attendance_percentage",
+        "class_participation",
+        "total_score",
+    ]
+    for field in numeric_fields:
+        if field in student:
+            try:
+                student[field] = Decimal(str(student[field]))
+            except (ValueError, TypeError, Decimal.InvalidOperation):
+                pass
+    return student
+
+
 def convert_floats(obj):
     if isinstance(obj, list):
         return [convert_floats(i) for i in obj]
@@ -27,11 +43,9 @@ def insert_into_dynamodb(table, records):
 
 
 def lambda_handler(event, context):
-    # Get the S3 bucket name and object key from the event
     bucket_name = event["Records"][0]["s3"]["bucket"]["name"]
     object_key = event["Records"][0]["s3"]["object"]["key"]
 
-    # Read the file from s3
     try:
         response = s3.get_object(Bucket=bucket_name, Key=object_key)
         file_content = response["Body"].read().decode("utf-8")
@@ -39,7 +53,6 @@ def lambda_handler(event, context):
         print(f"Error reading file from S3: {e}")
         raise
 
-    # Parse the file content
     try:
         students = json.loads(file_content)
     except Exception as e:
@@ -51,7 +64,6 @@ def lambda_handler(event, context):
 
     print(f"Found {len(students)} records")
 
-    # Calculate performance category
     valid_records = []
     skipped_records = []
 
@@ -62,6 +74,7 @@ def lambda_handler(event, context):
                 float(student["total_score"])
             )
 
+            student = convert_numeric_fields(student)
             student = convert_floats(student)
             valid_records.append(student)
         except Exception as e:

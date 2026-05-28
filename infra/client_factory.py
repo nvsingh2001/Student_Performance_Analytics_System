@@ -22,6 +22,9 @@ class AWSClientFactory:
     def get_dynamodb_client(self):
         return self._dynamodb_client
 
+    def get_dynamodb_resource(self):
+        return self._dynamodb_resource
+
     def get_dynamodb_table(self, table_name: str):
         return self._dynamodb_resource.Table(table_name)
 

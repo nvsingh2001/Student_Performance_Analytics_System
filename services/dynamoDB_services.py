@@ -39,13 +39,10 @@ class DynamoDBManager:
             return {}
 
     def filter_records(self, filter_expression, expression_attribute_values):
-        """
-        Retrieves records based on a filter expression.
-        """
         try:
             return self.table.scan(
                 FilterExpression=filter_expression,
-                ExpressionAttributeValues=expression_attribute_values
+                ExpressionAttributeValues=expression_attribute_values,
             )
         except Exception as e:
             print(f"Error filtering records: {e}")

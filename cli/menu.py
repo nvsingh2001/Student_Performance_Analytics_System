@@ -34,7 +34,7 @@ class MenuController:
                         f"[Invalid] Please select a number between 1 and {exit_option}."
                     )
             except ValueError:
-                print(f"[Invalid] Please enter a valid number.")
+                print("[Invalid] Please enter a valid number.")
 
             print("\nPress Enter to return to menu...")
             input()
