@@ -1,24 +1,37 @@
-from config import BUCKET_NAME
-from infra.provision import provision_services
-from services import S3Manager
-from utils import to_json
+from config import AWS_REGION, BUCKET_NAME, TABLE_NAME
+from infra.client_factory import AWSClientFactory
+from services import S3Manager, DynamoDBManager
+from cli.commands import (
+    DeployCommand,
+    UploadCommand,
+    StatusCommand,
+    QueryCommand,
+    CreateCommand,
+    UpdateCommand,
+    DeleteCommand,
+)
+from cli.menu import MenuController
 
 
 def main():
-    aws = provision_services()
+    factory = AWSClientFactory(AWS_REGION)
 
-    # Upload files s3 bucket
-    s3 = S3Manager(aws.get_s3(), BUCKET_NAME)
+    s3_manager = S3Manager(factory.get_s3_client(), BUCKET_NAME)
+    db_manager = DynamoDBManager(factory.get_dynamodb_table(TABLE_NAME))
 
-    file_path = input("Enter the path of the file to upload: ")
-    if file_path.endswith(".json"):
-        s3.upload_file(file_path)
-    elif file_path.endswith(".csv"):
-        json_file_path = file_path.replace(".csv", ".json")
-        to_json(file_path, json_file_path)
-        s3.upload_file(json_file_path)
-    else:
-        print("Invalid file format. Please upload a .json or .csv file.")
+    commands = [
+        DeployCommand(factory),
+        UploadCommand(s3_manager),
+        StatusCommand(db_manager),
+        QueryCommand(db_manager),
+        CreateCommand(db_manager),
+        UpdateCommand(db_manager),
+        DeleteCommand(db_manager),
+    ]
+
+    menu = MenuController(commands=commands)
+
+    menu.run()
 
 
 if __name__ == "__main__":
