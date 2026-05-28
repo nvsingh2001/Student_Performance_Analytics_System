@@ -3,7 +3,7 @@ from decimal import Decimal
 from cli.base import Command
 from infra.provision import provision_services
 from services import S3Manager, DynamoDBManager
-from utils.csv_to_json import to_json
+from utils import to_json, print_student_table
 
 
 class DeployCommand(Command):
@@ -78,19 +78,7 @@ class StatusCommand(Command):
                 print("[Info] No records found in the database.")
                 return
 
-            print("\n--- Student Performance Records ---")
-            print(f"{'Student ID':<15} | {'Study Hours':<12} | {'Attendance %':<12} | {'Participation':<13} | {'Total Score':<11} | {'Grade':<5} | {'Category':<15}")
-            print("-" * 100)
-            for item in items:
-                sid = item.get("student_id", "N/A")
-                hours = str(item.get("weekly_self_study_hours", "N/A"))
-                attnd = str(item.get("attendance_percentage", "N/A"))
-                part = str(item.get("class_participation", "N/A"))
-                score = str(item.get("total_score", "N/A"))
-                grade = item.get("grade", "N/A")
-                cat = item.get("performance_category", "N/A")
-                print(f"{sid:<15} | {hours:<12} | {attnd:<12} | {part:<13} | {score:<11} | {grade:<5} | {cat:<15}")
-            print("-" * 100)
+            print_student_table(items)
 
         except Exception as e:
             print(f"[Error] Failed to fetch records: {e}")
@@ -210,7 +198,6 @@ class UpdateCommand(Command):
         new_value_raw = input(f"Enter new value for {field_name}: ").strip()
 
         try:
-            # Convert to appropriate type
             if field_name in [
                 "weekly_self_study_hours",
                 "attendance_percentage",
@@ -224,7 +211,6 @@ class UpdateCommand(Command):
             update_expr = f"SET {field_name} = :val"
             attr_values = {":val": new_value}
 
-            # If updating total_score, we should also update category
             if field_name == "total_score":
                 score = float(new_value_raw)
                 if score >= 90:
@@ -317,21 +303,51 @@ class FilterQueryCommand(Command):
                 print("[Info] No records found matching the criteria.")
                 return
 
-            print(f"\n--- {title} ---")
-            print(f"{'Student ID':<15} | {'Study Hours':<12} | {'Attendance %':<12} | {'Participation':<13} | {'Total Score':<11} | {'Grade':<5} | {'Category':<15}")
-            print("-" * 100)
-            for item in items:
-                sid = item.get("student_id", "N/A")
-                hours = str(item.get("weekly_self_study_hours", "N/A"))
-                attnd = str(item.get("attendance_percentage", "N/A"))
-                part = str(item.get("class_participation", "N/A"))
-                score = str(item.get("total_score", "N/A"))
-                grade = item.get("grade", "N/A")
-                cat = item.get("performance_category", "N/A")
-                print(f"{sid:<15} | {hours:<12} | {attnd:<12} | {part:<13} | {score:<11} | {grade:<5} | {cat:<15}")
-            print("-" * 100)
+            print_student_table(items, title=title)
             print(f"Total found: {len(items)}")
-
 
         except Exception as e:
             print(f"[Error] Filter query failed: {e}")
+
+
+class GSIQueryCommand(Command):
+    @property
+    def name(self) -> str:
+        return "Query Top Students"
+
+    def __init__(self, db_manager: DynamoDBManager):
+        self.db = db_manager
+
+    def execute(self) -> None:
+        grade = input("\nEnter Grade to query top students (e.g., A): ").strip().upper()
+        if not grade:
+            print("[Error] Grade cannot be empty.")
+            return
+
+        limit_str = input("How many top students? (default 5): ").strip()
+        limit = int(limit_str) if limit_str and limit_str.isdigit() else 5
+
+        print(f"[Querying] Fetching top {limit} students for Grade {grade}...")
+        try:
+            from config import GSI_NAME
+
+            expr = "grade = :grade"
+            vals = {":grade": grade}
+
+            response = self.db.query_index(
+                index_name=GSI_NAME,
+                key_condition_expression=expr,
+                expression_attribute_values=vals,
+                scan_index_forward=False,
+                limit=limit,
+            )
+
+            items = response.get("Items", [])
+            if not items:
+                print(f"[Info] No records found for Grade {grade}.")
+                return
+
+            print_student_table(items, title=f"Top Students in Grade {grade}")
+
+        except Exception as e:
+            print(f"[Error] GSI query failed: {e}")

@@ -10,6 +10,7 @@ from cli.commands import (
     UpdateCommand,
     DeleteCommand,
     FilterQueryCommand,
+    GSIQueryCommand,
 )
 from cli.menu import MenuController
 
@@ -29,6 +30,7 @@ def main():
         UpdateCommand(db_manager),
         DeleteCommand(db_manager),
         FilterQueryCommand(db_manager),
+        GSIQueryCommand(db_manager),
     ]
 
     menu = MenuController(commands=commands)
