@@ -3,6 +3,7 @@ from infra.client_factory import AWSClientFactory
 from services import S3Manager, DynamoDBManager
 from cli.commands import (
     DeployCommand,
+    ExportCommand,
     UploadCommand,
     StatusCommand,
     QueryCommand,
@@ -20,6 +21,7 @@ def main():
 
     s3_manager = S3Manager(factory.get_s3_client(), BUCKET_NAME)
     db_manager = DynamoDBManager(factory.get_dynamodb_table(TABLE_NAME))
+    db_client = factory.get_dynamodb_client()
 
     commands = [
         DeployCommand(factory),
@@ -31,6 +33,7 @@ def main():
         DeleteCommand(db_manager),
         FilterQueryCommand(db_manager),
         GSIQueryCommand(db_manager),
+        ExportCommand(db_client, db_manager),
     ]
 
     menu = MenuController(commands=commands)

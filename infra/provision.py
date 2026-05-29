@@ -1,7 +1,7 @@
 import json
 import time
 import zipfile
-from config import BUCKET_NAME, LAMBDA_NAME, ROLE_NAME, TABLE_NAME, AWS_REGION
+from config import BUCKET_NAME, LAMBDA_NAME, ROLE_NAME, TABLE_NAME
 from .client_factory import AWSClientFactory
 
 
@@ -24,14 +24,14 @@ class InfrastructureProvisioner:
             if gsi:
                 kwargs["GlobalSecondaryIndexes"] = gsi
 
-            self.table = db_resource.create_table(**kwargs)
+            self.table = db_resource.create_table(**kwargs)  # type: ignore
             print("Creating table...")
             self.table.wait_until_exists()
             self.table.reload()
             print("Table Status:", self.table.table_status)
-        except db_resource.meta.client.exceptions.ResourceInUseException:
+        except db_resource.meta.client.exceptions.ResourceInUseException:  # type: ignore
             print("Table already exists.")
-            self.table = db_resource.Table(table_name)
+            self.table = db_resource.Table(table_name)  # type: ignore
 
             if gsi:
                 has_gsi = any(

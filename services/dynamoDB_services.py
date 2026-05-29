@@ -48,17 +48,31 @@ class DynamoDBManager:
             print(f"Error filtering records: {e}")
             return {}
 
-    def query_index(self, index_name, key_condition_expression, expression_attribute_values, scan_index_forward=False, limit=None):
+    def query_index(
+        self,
+        index_name,
+        key_condition_expression,
+        expression_attribute_values,
+        scan_index_forward=False,
+        limit=None,
+    ):
         try:
             kwargs = {
                 "IndexName": index_name,
                 "KeyConditionExpression": key_condition_expression,
                 "ExpressionAttributeValues": expression_attribute_values,
-                "ScanIndexForward": scan_index_forward
+                "ScanIndexForward": scan_index_forward,
             }
             if limit:
                 kwargs["Limit"] = limit
             return self.table.query(**kwargs)
         except Exception as e:
             print(f"Error querying index: {e}")
+            return {}
+
+    def full_scan_table(self, paginator):
+        try:
+            return paginator.paginate(TableName=self.table.table_name)
+        except Exception as e:
+            print(f"Error scanning table: {e}")
             return {}

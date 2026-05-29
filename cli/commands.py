@@ -1,9 +1,10 @@
+import decimal
 import os
 from decimal import Decimal
 from cli.base import Command
 from infra.provision import provision_services
 from services import S3Manager, DynamoDBManager
-from utils import to_json, print_student_table
+from utils import to_json, print_student_table, export_to_csv, export_to_json
 
 
 class DeployCommand(Command):
@@ -159,7 +160,7 @@ class CreateCommand(Command):
 
             self.db.insert_record(item)
             print(f"[Success] Record for {student_id} created.")
-        except (ValueError, ArithmeticError, Decimal.InvalidOperation):
+        except (ValueError, ArithmeticError, decimal.InvalidOperation):
             print("[Error] Invalid numeric input.")
         except Exception as e:
             print(f"[Error] Failed to create record: {e}")
@@ -351,3 +352,34 @@ class GSIQueryCommand(Command):
 
         except Exception as e:
             print(f"[Error] GSI query failed: {e}")
+
+
+class ExportCommand(Command):
+    @property
+    def name(self) -> str:
+        return "Export Records"
+
+    def __init__(self, db_client, db_manager: DynamoDBManager):
+        self.db = db_manager
+        self.db_client = db_client
+        self.paginator = self.db_client.get_paginator("scan")
+
+    def execute(self) -> None:
+        print("\n--- Select File Format ---")
+        print("1. CSV")
+        print("2. JSON")
+        print("3. Back to Main Menu")
+
+        choice = input("Select query option: ").strip()
+
+        if choice == "1":
+            filename = input("Enter filename: ").strip()
+            export_to_csv(self.db.full_scan_table(paginator=self.paginator), filename)
+        elif choice == "2":
+            filename = input("Enter filename: ").strip()
+            export_to_json(self.db.full_scan_table(paginator=self.paginator), filename)
+        elif choice == "3":
+            return
+        else:
+            print("[Error] Invalid selection.")
+            return

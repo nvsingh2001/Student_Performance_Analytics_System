@@ -14,7 +14,7 @@ class AWSClientFactory:
             self._initialized = True
             self.region = region
             self._dynamodb_resource = boto3.resource("dynamodb", region_name=region)
-            self._dynamodb_client = self._dynamodb_resource.meta.client
+            self._dynamodb_client = self._dynamodb_resource.meta.client  # type: ignore
             self._s3 = boto3.client("s3", region_name=region)
             self._iam = boto3.client("iam", region_name=region)
             self._lambda = boto3.client("lambda", region_name=region)
@@ -26,7 +26,7 @@ class AWSClientFactory:
         return self._dynamodb_resource
 
     def get_dynamodb_table(self, table_name: str):
-        return self._dynamodb_resource.Table(table_name)
+        return self._dynamodb_resource.Table(table_name)  # type: ignore
 
     def get_s3_client(self):
         return self._s3
