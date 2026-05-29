@@ -4,6 +4,7 @@ from services import S3Manager, DynamoDBManager
 from cli.commands import (
     DeployCommand,
     ExportCommand,
+    LeaderboardCommand,
     UploadCommand,
     StatusCommand,
     QueryCommand,
@@ -34,6 +35,7 @@ def main():
         FilterQueryCommand(db_manager),
         GSIQueryCommand(db_manager),
         ExportCommand(db_client, db_manager),
+        LeaderboardCommand(db_manager),
     ]
 
     menu = MenuController(commands=commands)

@@ -24,3 +24,7 @@ def validate_record(record):
     if missing:
         raise ValueError(f"Missing fields: {missing}")
     return True
+
+
+def is_at_risk(attendance_percentage, total_score):
+    return attendance_percentage < 60 or total_score < 50

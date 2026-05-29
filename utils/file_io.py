@@ -1,6 +1,5 @@
 import csv
 import json
-from boto3.dynamodb.types import TypeDeserializer
 import decimal
 
 

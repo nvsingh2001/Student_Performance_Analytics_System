@@ -354,6 +354,47 @@ class GSIQueryCommand(Command):
             print(f"[Error] GSI query failed: {e}")
 
 
+class LeaderboardCommand(Command):
+    @property
+    def name(self) -> str:
+        return "Leaderboard"
+
+    def __init__(self, db_manager: DynamoDBManager):
+        self.db = db_manager
+
+    def execute(self) -> None:
+        print("[Querying] Fetching global top 10 students by total_score...")
+        try:
+            from config import GSI_NAME
+
+            all_top_items = []
+            for grade in ["A", "B", "C", "D", "F"]:
+                expr = "grade = :grade"
+                vals = {":grade": grade}
+
+                response = self.db.query_index(
+                    index_name=GSI_NAME,
+                    key_condition_expression=expr,
+                    expression_attribute_values=vals,
+                    scan_index_forward=False,
+                    limit=10,
+                )
+                all_top_items.extend(response.get("Items", []))
+
+            if not all_top_items:
+                print("[Info] No records found.")
+                return
+
+            global_top_10 = sorted(
+                all_top_items, key=lambda x: x.get("total_score", 0), reverse=True
+            )[:10]
+
+            print_student_table(global_top_10, title="Global Top 10 Students")
+
+        except Exception as e:
+            print(f"[Error] Leaderboard query failed: {e}")
+
+
 class ExportCommand(Command):
     @property
     def name(self) -> str:

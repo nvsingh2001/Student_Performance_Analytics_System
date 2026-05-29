@@ -1,7 +1,8 @@
+import decimal
 import boto3
 import json
 import os
-from utils import calculate_performance_category, validate_record
+from utils import calculate_performance_category, validate_record, is_at_risk
 from decimal import Decimal
 
 s3 = boto3.client("s3")
@@ -20,7 +21,7 @@ def convert_numeric_fields(student):
         if field in student:
             try:
                 student[field] = Decimal(str(student[field]))
-            except (ValueError, TypeError, Decimal.InvalidOperation):
+            except (ValueError, TypeError, decimal.InvalidOperation):
                 pass
     return student
 
@@ -40,6 +41,19 @@ def insert_into_dynamodb(table, records):
     for record in records:
         table.put_item(Item=record)
         print(f"Inserted: {record['student_id']}")
+
+
+def batch_insert(table, records):
+    BATCH_SIZE = 25
+
+    for i in range(0, len(records), BATCH_SIZE):
+        batch = records[i : i + BATCH_SIZE]
+
+        with table.batch_writer() as writer:
+            for record in batch:
+                writer.put_item(Item=record)
+
+        print(f"Batch inserted records {i + 1} to {i + len(batch)}")
 
 
 def lambda_handler(event, context):
@@ -73,7 +87,9 @@ def lambda_handler(event, context):
             student["performance_category"] = calculate_performance_category(
                 float(student["total_score"])
             )
-
+            student["at_risk"] = is_at_risk(
+                student["attendance_percentage"], student["total_score"]
+            )
             student = convert_numeric_fields(student)
             student = convert_floats(student)
             valid_records.append(student)
@@ -83,7 +99,10 @@ def lambda_handler(event, context):
 
     table = dynamodb.Table(TABLE_NAME)
 
-    insert_into_dynamodb(table, valid_records)
+    if len(valid_records) > 500:
+        batch_insert(table, valid_records)
+    else:
+        insert_into_dynamodb(table, valid_records)
 
     return {
         "statusCode": 200,
